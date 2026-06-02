@@ -2,7 +2,7 @@
 title: ytm-lyrics-translator — YTM 가사를 LRCLIB+Claude 로 번역해 싱크 오버레이
 status: in_progress
 started: 2026-06-02
-updated: 2026-06-02
+updated: 2026-06-03
 ---
 
 # Goal
@@ -16,14 +16,16 @@ updated: 2026-06-02
 - 2026-06-02: `git init` + 초기 커밋(d2d819c, main) + 작업 브랜치 `feat/mvp`. manifest.json + main-world.js(MAIN world, #movie_player getVideoData/getCurrentTime, 250ms tick) + content.js(ISOLATED, CustomEvent 수신·콘솔 로그) **2-world 골격 작성**.
 - 2026-06-02: **G1 통과**(커밋 faf907c). 4단계 LRCLIB 연동 — lrclib.js(buildLyricsUrl·classifyLyricsResponse·fetchLyrics) **TDD 13 테스트** + background.js(SW fetch) + manifest host_permissions[lrclib.net] + main-world getDuration 추가. **메타 타이밍 버그**: 트랙 변경 직후 getVideoData title/duration 빈 값 → 빈 artist/track 으로 LRCLIB 호출 → HTTP 400. **해결**: '제목 채워진 후 트랙당 1회 요청'. 실측 'joan - don't say you love me' 41줄 ✓.
 - 2026-06-02: 5단계 오버레이 — overlay.js(window.__yltt_overlay, textContent 삽입)+overlay.css(우하단 반투명 패널)+content.js findCurrentIndex 인라인+간이 stale 방어. **G2 통과**(가사 표시·현재 줄 하이라이트 동작). `requestStorageAccessFor: Permission denied` 콘솔 에러는 YTM 페이지 자체(Storage Access API)·무해 — grep 으로 우리 코드 무관 확인.
+- 2026-06-03: 6단계 Claude 번역 — translate.js(id-keyed JSON I/O·부분복구·캐시키, 11테스트) + popup(키 설정, write 전용) + background(가사→번역→캐시, 키 read SW 전용) + overlay 원문/번역 병기. **code-review**(Claude; codex 미가용=Windows sandbox spawn 실패): **fix** High2(캐시 set 격리+`unlimitedStorage`, max_tokens 절단 정규식 부분복구) + Med2(빈/공백 번역 제외, 캐시키 timeMs 포함). **defer** A→B→A requestId(→stale 정식화)·findCurrentIndex 중복·LRU·durationSec=0. **42 테스트 Green**. G3 대기.
 
 # Next  (단계별 검증 게이트 사슬 — 3-world 통신·player API 는 자동테스트 불가라 수동 게이트가 핵심)
 1. ✅ package.json + lrc.js 파서 TDD (14 테스트)
 2. ✅ 2-world 골격 (G1 통과, faf907c)
 3. ✅ LRCLIB fetch(SW) + 실패 4분기 + 파서 연동 (lrclib.js 13 테스트; 메타 타이밍 버그 해결; 실측 41줄 ✓)
 4. ✅ overlay 싱크 표시(원문만) — G2 통과(findCurrentIndex content 인라인)
-5. **← 지금** Claude 번역: popup(API 키·대상 언어 → chrome.storage) + background Claude 호출(id 기반 {id:text} JSON I/O + 부분복구) + 캐시(복합 키) + 오버레이 원문 아래 번역 병기 — **[수동 게이트 G3]**
-6. stale 폐기 정식화(requestId/상태머신) + 빠른 곡 전환/loop/광고/seek
+5. ✅ Claude 번역 (translate.js 11테스트, popup/background/overlay 통합, code-review fix 반영, 42 테스트)
+6. **← 지금 [수동 게이트 G3]** popup 에 Claude API 키 입력 → 원문+한국어 번역 병기 표시·품질 확인
+7. stale 폐기 정식화(requestId/상태머신) + loop/광고/seek + 캐시 LRU (code-review defer 항목)
 
 # Decisions
 - **형태**: MV3 브라우저 확장. YTM 공식 플러그인 개념 없음 → 브라우저 확장이 유일 경로. content script 가 music.youtube.com 에 주입.

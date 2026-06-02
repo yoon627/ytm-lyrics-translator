@@ -3,11 +3,15 @@
   "name": "YTM Lyrics Translator (dev)",
   "version": "0.1.0",
   "description": "YouTube Music synced lyrics translated by Claude (personal dev build)",
+  "permissions": ["storage", "unlimitedStorage"],
+  "host_permissions": ["https://lrclib.net/*", "https://api.anthropic.com/*"],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
   },
-  "host_permissions": ["https://lrclib.net/*"],
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
   "content_scripts": [
     {
       "matches": ["https://music.youtube.com/*"],
