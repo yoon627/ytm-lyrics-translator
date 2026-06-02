@@ -4,7 +4,7 @@
 import { fetchLyrics } from "./lrclib.js";
 import { translate, buildCacheKey } from "./translate.js";
 
-const DEFAULTS = { targetLang: "Korean", model: "claude-haiku-4-5", translationEnabled: true };
+const DEFAULTS = { targetLang: "Korean", model: "gemini-2.5-flash", translationEnabled: true };
 
 async function getSettings() {
   const s = await chrome.storage.local.get(["apiKey", "targetLang", "model", "translationEnabled"]);

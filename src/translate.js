@@ -1,13 +1,10 @@
-// Claude Messages API 로 가사 줄별 번역. 순수 함수(프롬프트/파싱/머지/캐시키)는 단위 테스트,
-// fetch 는 주입. 확장 환경이라 @anthropic-ai/sdk 대신 fetch 직접 호출.
-// 헤더 anthropic-dangerous-direct-browser-access:true 로 브라우저 CORS 통과(본인용·미배포).
-//
-// 프롬프트 캐싱은 적용 안 함: haiku-4-5 의 최소 캐시 프리픽스가 4096 토큰인데 번역 지침
-// system 은 그보다 짧아 캐시되지 않는다(효과 없음).
+// Gemini API 로 가사 줄별 번역. 순수 함수(프롬프트/파싱/머지/캐시키)는 단위 테스트, fetch 는 주입.
+// 확장 SW + host_permissions 면 CORS 면제(content script 직접 호출 금지 — 반드시 SW 에서).
+// JSON 강제(responseMimeType/responseFormat)는 세대별 키가 갈리고 schema 동반이 필요해,
+// 평문 응답 + parseTranslations(부분복구 포함) 으로 처리한다.
 
-const API_URL = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_VERSION = "2023-06-01";
-const MAX_TOKENS = 8192; // 상한일 뿐 — 보통 곡당 출력은 1~2K 토큰
+const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const MAX_OUTPUT_TOKENS = 8192; // 상한일 뿐 — 보통 곡당 출력은 1~2K 토큰
 
 export function buildSystemPrompt(lang) {
   return [
@@ -46,7 +43,6 @@ export function parseTranslations(rawText) {
     const parsed = JSON.parse(t);
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) obj = parsed;
   } catch {
-    // 절단/약간 깨진 JSON → 닫힌 쌍만 복구(부분복구)
     PAIR_RE.lastIndex = 0;
     let m;
     while ((m = PAIR_RE.exec(t)) !== null) {
@@ -91,28 +87,26 @@ export async function translate(segments, opts, fetchFn = fetch) {
   const hasText = segments.some((s) => s.text && s.text.trim());
   if (!hasText) return mergeTranslations(segments, {}); // 번역할 것 없음
 
-  const res = await fetchFn(API_URL, {
+  const res = await fetchFn(`${API_BASE}/${model}:generateContent`, {
     method: "POST",
     headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": ANTHROPIC_VERSION,
+      "x-goog-api-key": apiKey,
       "content-type": "application/json",
-      "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
-      model,
-      max_tokens: MAX_TOKENS,
-      system: buildSystemPrompt(lang),
-      messages: [{ role: "user", content: buildUserContent(segments) }],
+      system_instruction: { parts: [{ text: buildSystemPrompt(lang) }] },
+      contents: [{ parts: [{ text: buildUserContent(segments) }] }],
+      generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS, temperature: 0.7 },
     }),
   });
 
-  if (!res.ok) throw new Error(`Claude API ${res.status}`); // background 가 catch → 원문 표시
+  if (!res.ok) throw new Error(`Gemini API ${res.status}`); // background 가 catch → 원문 표시
 
   const data = await res.json();
-  if (data && data.stop_reason === "max_tokens") {
-    console.warn("[yltt] translation truncated (max_tokens) — recovering partial");
+  const cand = data?.candidates?.[0];
+  if (cand?.finishReason === "MAX_TOKENS") {
+    console.warn("[yltt] translation truncated (MAX_TOKENS) — recovering partial");
   }
-  const text = data?.content?.[0]?.text ?? "";
+  const text = cand?.content?.parts?.[0]?.text ?? "";
   return mergeTranslations(segments, parseTranslations(text));
 }
