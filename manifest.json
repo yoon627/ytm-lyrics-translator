@@ -17,7 +17,8 @@
     },
     {
       "matches": ["https://music.youtube.com/*"],
-      "js": ["src/content.js"],
+      "js": ["src/overlay.js", "src/content.js"],
+      "css": ["src/overlay.css"],
       "world": "ISOLATED",
       "run_at": "document_idle"
     }

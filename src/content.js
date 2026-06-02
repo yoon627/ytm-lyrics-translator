@@ -1,50 +1,66 @@
-// ISOLATED world content script — MAIN world(main-world.js)가 보낸 player 업데이트를 수신,
-// 곡 메타(제목·길이)가 채워진 뒤 background service worker 에 가사를 요청한다.
-// 이후 단계에서 상태 머신·requestId·오버레이·번역을 붙인다.
-//
-// 4단계 목표(수동 확인): 곡 재생 → 메타 확정 후 LRCLIB 호출 → 가사 줄 수가 콘솔에 찍히는지.
+// ISOLATED world content script — MAIN world 의 player 업데이트를 받아 가사를 요청하고,
+// 재생 위치에 맞춰 오버레이(window.__yltt_overlay)의 현재 줄을 갱신한다.
+// 이후 단계에서 번역·정식 stale 폐기(requestId)·캐시를 붙인다.
 (function () {
   const EVENT = "yltt:player-update";
 
   let currentVideoId = null;
-  let requestedFor = null; // 이미 가사 요청을 보낸 videoId (곡당 1회)
-  let lastTimeLogMs = 0;
+  let requestedFor = null; // 가사 요청을 보낸 videoId (곡당 1회)
+  let segments = null; // 현재 곡의 가사 [{id, timeMs, text}]
+
+  // lrc.js findCurrentIndex 와 동일 알고리즘(이진탐색). content script 는 ESM import 불가라 인라인.
+  function findCurrentIndex(segs, timeMs) {
+    let lo = 0;
+    let hi = segs.length - 1;
+    let ans = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (segs[mid].timeMs <= timeMs) {
+        ans = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return ans;
+  }
 
   document.addEventListener(EVENT, (e) => {
     const d = e.detail;
 
     if (d.videoId !== currentVideoId) {
       currentVideoId = d.videoId;
-      lastTimeLogMs = 0;
-      console.log(`[yltt] ▶ track change: videoId=${d.videoId} (meta 대기…)`);
+      segments = null;
+      window.__yltt_overlay.clear();
+      console.log(`[yltt] ▶ track change: ${d.videoId}`);
     }
 
-    // 제목이 채워졌고 이 곡을 아직 요청하지 않았을 때만 요청(트랙당 1회; duration 은 있으면 매칭 정밀도에 사용)
+    // 제목이 채워졌고 아직 이 곡을 요청하지 않았으면 가사 요청
     if (d.videoId && d.title && requestedFor !== d.videoId) {
       requestedFor = d.videoId;
       console.log(`[yltt] ▶ track: ${d.author} — ${d.title} (${d.durationSec}s)`);
-      requestLyrics({ artist: d.author, track: d.title, durationSec: d.durationSec });
+      requestLyrics(d.videoId, { artist: d.author, track: d.title, durationSec: d.durationSec });
     }
 
-    // 시간 흐름 확인용 (약 5초마다, seek 되감기 시 즉시)
-    if (d.currentTimeMs - lastTimeLogMs >= 5000 || d.currentTimeMs < lastTimeLogMs) {
-      console.log(`[yltt]   t = ${(d.currentTimeMs / 1000).toFixed(1)}s`);
-      lastTimeLogMs = d.currentTimeMs;
+    // 재생 위치에 맞춰 현재 줄 하이라이트
+    if (segments && segments.length) {
+      window.__yltt_overlay.highlight(findCurrentIndex(segments, d.currentTimeMs));
     }
   });
 
-  async function requestLyrics(query) {
+  async function requestLyrics(videoId, query) {
     try {
       const resp = await chrome.runtime.sendMessage({ type: "getLyrics", query });
-      if (!resp) {
-        console.log("[yltt] ✗ lyrics: no response from service worker");
-      } else if (resp.status === "ok") {
-        console.log(`[yltt] ✓ lyrics: ${resp.segments.length} lines — ${resp.artistName} - ${resp.trackName}`);
+      if (currentVideoId !== videoId) return; // 응답 도착 전 곡이 바뀜 — 폐기(간이 stale 방어)
+      if (resp && resp.status === "ok") {
+        segments = resp.segments;
+        window.__yltt_overlay.setLyrics(segments);
+        console.log(`[yltt] ✓ lyrics: ${segments.length} lines`);
       } else {
-        console.log(`[yltt] ✗ lyrics: ${resp.status}${resp.reason ? " (" + resp.reason + ")" : ""}`);
+        console.log(`[yltt] ✗ lyrics: ${resp?.status ?? "no response"}${resp?.reason ? " (" + resp.reason + ")" : ""}`);
       }
     } catch (err) {
-      console.log("[yltt] ✗ lyrics request error:", err?.message || err);
+      console.log("[yltt] ✗ lyrics error:", err?.message || err);
     }
   }
 

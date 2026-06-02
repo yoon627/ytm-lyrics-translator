@@ -15,14 +15,15 @@ updated: 2026-06-02
 - 2026-06-02: 스캐폴딩(package.json, node:test) + **lrc.js 파서 TDD 완료** — parseLrc(메타필터·다중 ts 전개·빈 줄·2/3자리 ms)·findCurrentIndex(이진탐색 경계) **14 테스트 Green**. (Red→구현→Green 확인)
 - 2026-06-02: `git init` + 초기 커밋(d2d819c, main) + 작업 브랜치 `feat/mvp`. manifest.json + main-world.js(MAIN world, #movie_player getVideoData/getCurrentTime, 250ms tick) + content.js(ISOLATED, CustomEvent 수신·콘솔 로그) **2-world 골격 작성**.
 - 2026-06-02: **G1 통과**(커밋 faf907c). 4단계 LRCLIB 연동 — lrclib.js(buildLyricsUrl·classifyLyricsResponse·fetchLyrics) **TDD 13 테스트** + background.js(SW fetch) + manifest host_permissions[lrclib.net] + main-world getDuration 추가. **메타 타이밍 버그**: 트랙 변경 직후 getVideoData title/duration 빈 값 → 빈 artist/track 으로 LRCLIB 호출 → HTTP 400. **해결**: '제목 채워진 후 트랙당 1회 요청'. 실측 'joan - don't say you love me' 41줄 ✓.
+- 2026-06-02: 5단계 오버레이 — overlay.js(window.__yltt_overlay, textContent 삽입)+overlay.css(우하단 반투명 패널)+content.js findCurrentIndex 인라인+간이 stale 방어. **G2 통과**(가사 표시·현재 줄 하이라이트 동작). `requestStorageAccessFor: Permission denied` 콘솔 에러는 YTM 페이지 자체(Storage Access API)·무해 — grep 으로 우리 코드 무관 확인.
 
 # Next  (단계별 검증 게이트 사슬 — 3-world 통신·player API 는 자동테스트 불가라 수동 게이트가 핵심)
 1. ✅ package.json + lrc.js 파서 TDD (14 테스트)
 2. ✅ 2-world 골격 (G1 통과, faf907c)
 3. ✅ LRCLIB fetch(SW) + 실패 4분기 + 파서 연동 (lrclib.js 13 테스트; 메타 타이밍 버그 해결; 실측 41줄 ✓)
-4. **← 지금** overlay 싱크 표시(**번역 없이 원문만**): overlay 렌더 + content tick 하이라이트(findCurrentIndex) — **[수동 게이트 G2]** 싱크 육안 확인. ⚠️ content script 는 ESM import 불가 → findCurrentIndex 를 content 에 인라인(또는 번들러 도입 검토)
-5. Claude 번역(SW) + id 기반 매핑/부분복구 + 캐시
-6. stale 폐기 + 빠른 곡 전환/loop/광고/seek — **[수동 게이트 G3]**
+4. ✅ overlay 싱크 표시(원문만) — G2 통과(findCurrentIndex content 인라인)
+5. **← 지금** Claude 번역: popup(API 키·대상 언어 → chrome.storage) + background Claude 호출(id 기반 {id:text} JSON I/O + 부분복구) + 캐시(복합 키) + 오버레이 원문 아래 번역 병기 — **[수동 게이트 G3]**
+6. stale 폐기 정식화(requestId/상태머신) + 빠른 곡 전환/loop/광고/seek
 
 # Decisions
 - **형태**: MV3 브라우저 확장. YTM 공식 플러그인 개념 없음 → 브라우저 확장이 유일 경로. content script 가 music.youtube.com 에 주입.
