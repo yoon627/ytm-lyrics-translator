@@ -13,16 +13,16 @@ updated: 2026-06-02
 - 2026-06-02: researcher 2건으로 LRCLIB·Claude API·MV3·YTM DOM 사실 1차 출처 확정. draft plan 작성.
 - 2026-06-02: plan-reviewer(Claude+codex 병행) 검토 — stale race(critical), id 기반 번역 I/O·복합 캐시키·키 SW 전용(high), 실패 4분기·광고·XSS 등 반영. MVP 를 "syncedLyrics 있는 곡만"으로 축소. (지적 처리는 # Review Disposition)
 - 2026-06-02: 스캐폴딩(package.json, node:test) + **lrc.js 파서 TDD 완료** — parseLrc(메타필터·다중 ts 전개·빈 줄·2/3자리 ms)·findCurrentIndex(이진탐색 경계) **14 테스트 Green**. (Red→구현→Green 확인)
-- 2026-06-02: `git init` + 초기 커밋(d2d819c, main) + 작업 브랜치 `feat/mvp`. manifest.json + main-world.js(MAIN world, #movie_player getVideoData/getCurrentTime, 250ms tick) + content.js(ISOLATED, CustomEvent 수신·콘솔 로그) **2-world 골격 작성** — G1 수동 확인 대기.
+- 2026-06-02: `git init` + 초기 커밋(d2d819c, main) + 작업 브랜치 `feat/mvp`. manifest.json + main-world.js(MAIN world, #movie_player getVideoData/getCurrentTime, 250ms tick) + content.js(ISOLATED, CustomEvent 수신·콘솔 로그) **2-world 골격 작성**.
+- 2026-06-02: **G1 통과**(커밋 faf907c). 4단계 LRCLIB 연동 — lrclib.js(buildLyricsUrl·classifyLyricsResponse·fetchLyrics) **TDD 13 테스트** + background.js(SW fetch) + manifest host_permissions[lrclib.net] + main-world getDuration 추가. **메타 타이밍 버그**: 트랙 변경 직후 getVideoData title/duration 빈 값 → 빈 artist/track 으로 LRCLIB 호출 → HTTP 400. **해결**: '제목 채워진 후 트랙당 1회 요청'. 실측 'joan - don't say you love me' 41줄 ✓.
 
 # Next  (단계별 검증 게이트 사슬 — 3-world 통신·player API 는 자동테스트 불가라 수동 게이트가 핵심)
-1. ✅ 완료 — package.json + lrc.js 파서 TDD (14 테스트 Green)
-2. ✅ 완료 — manifest.json + main-world.js(MAIN) + content.js(ISOLATED) 2-world 골격
-3. **← 지금 [수동 게이트 G1]** 크롬에 압축해제 확장 로드 → 실 YTM 에서 videoId·currentTime CustomEvent 안정 발신 콘솔 확인 (안 되면 이후 전부 무의미 → 최우선). 통과 후 feat/mvp 에 커밋.
-4. LRCLIB fetch(SW) + 실패 4분기 + 파서 연동 (번역 없이 데이터까지)
-5. overlay 싱크 표시(**번역 없이 원문만**) — **[수동 게이트 G2]** 싱크 정확도 육안 확인
-6. Claude 번역(SW) + id 기반 매핑/부분복구 + 캐시
-7. stale 폐기 + 빠른 곡 전환/loop/광고/seek — **[수동 게이트 G3]**
+1. ✅ package.json + lrc.js 파서 TDD (14 테스트)
+2. ✅ 2-world 골격 (G1 통과, faf907c)
+3. ✅ LRCLIB fetch(SW) + 실패 4분기 + 파서 연동 (lrclib.js 13 테스트; 메타 타이밍 버그 해결; 실측 41줄 ✓)
+4. **← 지금** overlay 싱크 표시(**번역 없이 원문만**): overlay 렌더 + content tick 하이라이트(findCurrentIndex) — **[수동 게이트 G2]** 싱크 육안 확인. ⚠️ content script 는 ESM import 불가 → findCurrentIndex 를 content 에 인라인(또는 번들러 도입 검토)
+5. Claude 번역(SW) + id 기반 매핑/부분복구 + 캐시
+6. stale 폐기 + 빠른 곡 전환/loop/광고/seek — **[수동 게이트 G3]**
 
 # Decisions
 - **형태**: MV3 브라우저 확장. YTM 공식 플러그인 개념 없음 → 브라우저 확장이 유일 경로. content script 가 music.youtube.com 에 주입.
