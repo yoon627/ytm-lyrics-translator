@@ -1,0 +1,13 @@
+# dependencies (현재 0 — node:test 만 사용)
+node_modules/
+
+# secrets — API 키는 chrome.storage 에 저장하지만 방어적으로 차단
+.env
+.env.*
+*.pem
+*.key
+
+# logs / OS
+*.log
+.DS_Store
+Thumbs.db
