@@ -13,11 +13,12 @@ updated: 2026-06-02
 - 2026-06-02: researcher 2건으로 LRCLIB·Claude API·MV3·YTM DOM 사실 1차 출처 확정. draft plan 작성.
 - 2026-06-02: plan-reviewer(Claude+codex 병행) 검토 — stale race(critical), id 기반 번역 I/O·복합 캐시키·키 SW 전용(high), 실패 4분기·광고·XSS 등 반영. MVP 를 "syncedLyrics 있는 곡만"으로 축소. (지적 처리는 # Review Disposition)
 - 2026-06-02: 스캐폴딩(package.json, node:test) + **lrc.js 파서 TDD 완료** — parseLrc(메타필터·다중 ts 전개·빈 줄·2/3자리 ms)·findCurrentIndex(이진탐색 경계) **14 테스트 Green**. (Red→구현→Green 확인)
+- 2026-06-02: `git init` + 초기 커밋(d2d819c, main) + 작업 브랜치 `feat/mvp`. manifest.json + main-world.js(MAIN world, #movie_player getVideoData/getCurrentTime, 250ms tick) + content.js(ISOLATED, CustomEvent 수신·콘솔 로그) **2-world 골격 작성** — G1 수동 확인 대기.
 
 # Next  (단계별 검증 게이트 사슬 — 3-world 통신·player API 는 자동테스트 불가라 수동 게이트가 핵심)
 1. ✅ 완료 — package.json + lrc.js 파서 TDD (14 테스트 Green)
-2. manifest.json + src/main-world.js(MAIN world) + src/content.js(ISOLATED world) 골격
-3. **[수동 게이트 G1]** 크롬에 압축해제 확장 로드 → 실 YTM 에서 videoId·currentTime CustomEvent 안정 발신 콘솔 확인 (안 되면 이후 전부 무의미 → 최우선)
+2. ✅ 완료 — manifest.json + main-world.js(MAIN) + content.js(ISOLATED) 2-world 골격
+3. **← 지금 [수동 게이트 G1]** 크롬에 압축해제 확장 로드 → 실 YTM 에서 videoId·currentTime CustomEvent 안정 발신 콘솔 확인 (안 되면 이후 전부 무의미 → 최우선). 통과 후 feat/mvp 에 커밋.
 4. LRCLIB fetch(SW) + 실패 4분기 + 파서 연동 (번역 없이 데이터까지)
 5. overlay 싱크 표시(**번역 없이 원문만**) — **[수동 게이트 G2]** 싱크 정확도 육안 확인
 6. Claude 번역(SW) + id 기반 매핑/부분복구 + 캐시

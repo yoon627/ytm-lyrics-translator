@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "YTM Lyrics Translator (dev)",
+  "version": "0.1.0",
+  "description": "YouTube Music synced lyrics translated by Claude (personal dev build)",
+  "content_scripts": [
+    {
+      "matches": ["https://music.youtube.com/*"],
+      "js": ["src/main-world.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://music.youtube.com/*"],
+      "js": ["src/content.js"],
+      "world": "ISOLATED",
+      "run_at": "document_idle"
+    }
+  ]
+}
