@@ -31,7 +31,14 @@
     } catch (_) {
       return; // player 준비 안 됨 — 다음 tick 에 재시도
     }
-    if (!data || !data.video_id) return; // 광고/로딩 등 video_id 없는 구간은 스킵
+    if (!data || !data.video_id) {
+      // 광고/로딩 등 video_id 없는 구간 — 직전에 곡이 있었으면 1회 통지해 오버레이를 내린다.
+      if (lastVideoId !== null) {
+        lastVideoId = null;
+        document.dispatchEvent(new CustomEvent(EVENT, { detail: { videoId: null, title: "", author: "", currentTimeMs: 0, durationSec: 0 } }));
+      }
+      return;
+    }
 
     const detail = {
       videoId: data.video_id,

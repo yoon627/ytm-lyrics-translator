@@ -111,3 +111,22 @@ test("B title 늦게 채워짐 → 새 seq 로 정상 재요청", () => {
   assert.equal(r.state.requestedFor, "B");
   assert.equal(isFresh(r.state, 2), true);
 });
+
+// --- 광고/로딩 구간 (video_id 소실 → 오버레이 clear, 복귀 시 재요청) ---
+test("광고 진입(videoId null) → trackChanged(clear 유도), 요청 없음, seq 증가", () => {
+  const s = onPlayer(createSyncState(), { videoId: "A", title: "a" }).state; // {A,A,1}
+  const r = onPlayer(s, { videoId: null, title: "" }); // 광고 — video_id 소실
+  assert.equal(r.trackChanged, true); // 오버레이 clear 유도
+  assert.equal(r.request, null);
+  assert.equal(r.state.videoId, null);
+  assert.equal(r.state.seq, 2); // 이전 곡 in-flight 무효화
+});
+
+test("광고 후 같은 곡 복귀 → 재요청(requestedFor 리셋)", () => {
+  let s = createSyncState();
+  s = onPlayer(s, { videoId: "A", title: "a" }).state; // {A,A,1}
+  s = onPlayer(s, { videoId: null, title: "" }).state; // 광고로 clear
+  const r = onPlayer(s, { videoId: "A", title: "a" }); // 복귀 — 다시 요청해야 함
+  assert.deepEqual(r.request, { reqSeq: 3 });
+  assert.equal(r.state.requestedFor, "A");
+});
