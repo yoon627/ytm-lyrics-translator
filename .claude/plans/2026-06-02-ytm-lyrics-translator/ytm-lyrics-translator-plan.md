@@ -23,6 +23,8 @@ updated: 2026-06-03
 - 2026-06-03: **stale 정식화 dlc 착수**(Explore 완료). 현 방어=content.js:52 videoId 단독 비교(A→B→A·loop 옛 응답 통과). draft 설계: epoch 클로저 캡처 검증, **background echo 불필요 발견**(await Promise=요청-응답 1:1 → 클로저가 echo 동치), 6-state→경량 축소 검토. plan-reviewer 대기.
 - 2026-06-03: **plan-review 완료**(Claude+codex 0.136.0 병행; codex 보조 read 만 sandbox 실패, 본 검토 정상). 핵심 정정: draft '트랙당 epoch'→**요청당 `requestSeq`**(동일 videoId out-of-order 차단; 트랙 식별은 currentVideoId, 2-token 불필요). echo 불필요·경량상태 유지 확인. **catch/실패/degraded 전 경로 stale 가드**(draft 누락분). 순수 reducer 로 시퀀스 TDD. 스코프=stale 만(requestKey/duration=일본어 가설③ 영역은 보류 유지로 defer).
 - 2026-06-03: **stale 정식화 구현 완료**(dlc). `src/sync.js`(순수 reducer)+`tests/sync.test.js` TDD → content.js 가 `requestSeq` 로 stale 폐기(성공/실패/catch 전 경로); background/main-world/manifest **무변경**. **code-review(Claude+codex)**: 잔존 Critical **C1**(트랙 전환 직후 title 빈 창 + 캐시 즉답 → 옛 응답 통과) 발견 → **fix**: `trackChanged` 시 `seq++`(이전 트랙 in-flight 무효화) 를 sync.js+content.js 인라인 **양쪽 동시** + 재현 테스트 3종. **55 테스트 Green**. 수동 게이트(트랙 빠른 전환 시 가사 안 섞임 육안 확인) 대기.
+- 2026-06-03: 플랫폼 대안 researcher 조사(userscript/th-ch electron/Win GSMTC/OSS). 결론은 Decisions '플랫폼 확장 검토'. + **7단계 광고 구간 처리 완료**(dlc): main-world 가 video_id 소실 구간(광고/로딩, code-review m2)을 null 이벤트로 통지→clear; sync trackChanged 시 requestedFor 리셋(A→광고→A 재요청) + content 인라인 동기화 + 광고 테스트 2종. **57 Green**. seek/loop 는 sync 로 이미 커버(seek 재요청無·loop seq 불변).
+- 2026-06-03: **7단계 캐시 LRU 완료**(dlc). `src/cache.js`(touchIndex/evict 순수 LRU)+`tests/cache.test.js`(7테스트) → background.js 가 `__yltt_cache_index__` 인덱스로 캐시 키만 추적(설정 키 분리), 항목 200 초과 시 오래된 것 제거. **64 테스트 Green**. 한계: 인덱스 도입 전 기존 캐시는 재접근 전까지 추적 밖(자가치유). **7단계 코드 완결**(광고+seek/loop+LRU).
 
 # Next  (단계별 검증 게이트 사슬 — 3-world 통신·player API 는 자동테스트 불가라 수동 게이트가 핵심)
 - **[버그·보류·입력 대기] 일본어 곡 싱크 어긋남** (사용자 보류 2026-06-03 — 데이터 오면 재개): 재현 곡명/콘솔 로그(`[yltt] ▶ track:` 의 author·title·durationSec + `[yltt] ✓ lyrics:` 의 줄수) 확보 → LRCLIB `/api/get` 직접 조회로 (a)받은 가사 기준 길이 vs YTM durationSec (b)`[offset:]` 태그 유무 (c)동명 이버전 수 대조 → 가설 ①offset무시/②틀린버전/③duration누락 중 확정 → 수정 + 재현 테스트(lrc.test.js 또는 lrclib.test.js). 양상 '곡마다 제각각'·표본 1~2곡이라 데이터 확보가 선행 조건.
@@ -32,7 +34,7 @@ updated: 2026-06-03
 4. ✅ overlay 싱크 표시(원문만) — G2 통과(findCurrentIndex content 인라인)
 5. ✅ Claude 번역 (translate.js 11테스트, popup/background/overlay 통합, code-review fix 반영, 42 테스트)
 6. ✅ [수동 게이트 G3 통과] Gemini 키 입력 → 원문+한국어 번역 병기 동작 (사용자 확인 2026-06-03)
-7. **← 지금** stale 폐기 정식화 ✅**구현완료**(requestSeq + 전경로 가드 + C1 title-lag fix, 55 테스트; **수동 게이트 대기**: 트랙 빠른 전환 시 가사 안 섞임 확인) | 남은 항목: loop/광고 오버레이 clear/seek 정교화 + 캐시 LRU
+7. ✅ **7단계 코드 완결** — stale(requestSeq+C1 fix) + 광고 구간 clear(null 이벤트+requestedFor 리셋) + seek/loop(sync 커버) + 캐시 LRU. **64 테스트**. | **다음: 수동 게이트 종합 확인**(트랙전환 stale·광고 오버레이·LRU 동작) + 일본어 버그(보류·데이터 대기). (video_id 有 광고는 MVP 밖)
 
 # Decisions
 - **형태**: MV3 브라우저 확장. YTM 공식 플러그인 개념 없음 → 브라우저 확장이 유일 경로. content script 가 music.youtube.com 에 주입.
@@ -52,6 +54,7 @@ updated: 2026-06-03
 - **feature flag** (신규, rollback): `translationEnabled`/`overlayEnabled`/`useCache`/`debugMode` (chrome.storage) → "번역 OFF, 원문 싱크 유지" degraded 롤백.
 - **테스트**: node:test (의존성 0). 순수 함수 단위테스트 — lrc 파서(메타필터·중복 ts 전개·빈 줄·2/3자리 ms), 현재줄 이진탐색(첫 줄 이전/마지막 이후/정확 일치 경계), 번역 머지(부분 복구), 캐시 키 생성. 3-world 통신·player API·오버레이·실 API 는 수동 게이트(G1~G3).
 - **MVP 범위**: syncedLyrics 있는 곡만 + 영어→한국어 + 원문+번역 병기 + stale 폐기 + 키 SW 전용 + Claude 실패 시 원문. 이후: search 폴백, sonnet, 다국어 자동감지, "번역만" 토글, 로마자, seek-to-middle/인트로 정교화.
+- **플랫폼 확장 검토** (2026-06-03, researcher): 차별점=LLM 번역 품질(`translate.js`); better-lyrics·YTM 공식(2025-10~ 테스트)은 기계번역. 이식난이도 ①Userscript(`@grant none`+`GM_xmlhttpRequest`/`@connect`, 코어 거의 그대로; 같은 브라우저라 실익 적음) ②th-ch/youtube-music Electron 플러그인(renderer 메타+위치+오버레이; LRCLIB 이미 내장→번역 레이어만) ③OS 미디어세션(Win GSMTC: `Position`이 LastUpdatedTime 스냅샷→연속 싱크 정확도 미보장·트랙길이 없어 매칭 약함; Spotify 등 범용이 유일 장점, mac 15.4+ 접근제한). **결론**: chrome ext 유지 + 순수 코어(lrc/lrclib/translate) 플랫폼 독립 유지. OS 범용은 GSMTC position 갱신주기 로컬 측정 선행.
 
 # Key Files (예정)
 - `manifest.json` — MV3. content_scripts 2개(world:MAIN / world:ISOLATED), background.service_worker(type:module), host_permissions[music.youtube.com, lrclib.net, api.anthropic.com], permissions[storage], web_accessible_resources(overlay.css), action(popup)

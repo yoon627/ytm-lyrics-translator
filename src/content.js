@@ -19,6 +19,7 @@
     if (evt.videoId !== videoId) {
       videoId = evt.videoId;
       trackChanged = true;
+      requestedFor = null; // 트랙 바뀜 → 요청 표식 해제(A→광고(videoId null)→A 복귀 시 재요청 보장)
       seq += 1; // 트랙 전환 즉시 이전 트랙 in-flight 응답 무효화(C1: title 지연 창 + 캐시 즉답 race 차단)
     }
     let request = null;
@@ -57,7 +58,7 @@
     if (r.trackChanged) {
       segments = null;
       window.__yltt_overlay.clear();
-      console.log(`[yltt] ▶ track change: ${d.videoId}`);
+      console.log(d.videoId ? `[yltt] ▶ track change: ${d.videoId}` : "[yltt] ▶ no video (ad/loading) — overlay cleared");
     }
 
     if (r.request) {
