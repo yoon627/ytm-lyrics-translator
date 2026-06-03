@@ -1,4 +1,4 @@
-// background service worker — content script 의 요청을 받아 외부 API(LRCLIB·Claude)를 호출한다.
+// background service worker — content script 의 요청을 받아 외부 API(LRCLIB·Gemini)를 호출한다.
 // MV3 에서 content script 의 fetch 는 페이지 origin CORS 에 막히므로 외부 호출은 여기서 수행.
 // API 키는 여기(SW)에서만 chrome.storage.local 로 읽는다(content/main world 비접근).
 import { fetchLyrics } from "./lrclib.js";
@@ -56,7 +56,7 @@ async function handleGetLyrics(query) {
     }
     return { ...lyrics, segments: translated };
   } catch (err) {
-    // Claude 실패(429/5xx/키오류 등) → 원문만 표시(degraded)
+    // Gemini 실패(429/5xx/키오류 등) → 원문만 표시(degraded)
     return { ...lyrics, segments: withoutTranslation(lyrics.segments), translateError: String(err?.message || err) };
   }
 }
