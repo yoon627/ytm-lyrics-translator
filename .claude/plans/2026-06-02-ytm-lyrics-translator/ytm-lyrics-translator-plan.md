@@ -1,6 +1,6 @@
 ---
-title: ytm-lyrics-translator — YTM 가사를 LRCLIB+Claude 로 번역해 싱크 오버레이
-status: in_progress
+title: ytm-lyrics-translator — YTM 가사를 LRCLIB+Gemini 로 번역해 싱크 오버레이
+status: done
 started: 2026-06-02
 updated: 2026-06-03
 ---
@@ -25,9 +25,13 @@ updated: 2026-06-03
 - 2026-06-03: **stale 정식화 구현 완료**(dlc). `src/sync.js`(순수 reducer)+`tests/sync.test.js` TDD → content.js 가 `requestSeq` 로 stale 폐기(성공/실패/catch 전 경로); background/main-world/manifest **무변경**. **code-review(Claude+codex)**: 잔존 Critical **C1**(트랙 전환 직후 title 빈 창 + 캐시 즉답 → 옛 응답 통과) 발견 → **fix**: `trackChanged` 시 `seq++`(이전 트랙 in-flight 무효화) 를 sync.js+content.js 인라인 **양쪽 동시** + 재현 테스트 3종. **55 테스트 Green**. 수동 게이트(트랙 빠른 전환 시 가사 안 섞임 육안 확인) 대기.
 - 2026-06-03: 플랫폼 대안 researcher 조사(userscript/th-ch electron/Win GSMTC/OSS). 결론은 Decisions '플랫폼 확장 검토'. + **7단계 광고 구간 처리 완료**(dlc): main-world 가 video_id 소실 구간(광고/로딩, code-review m2)을 null 이벤트로 통지→clear; sync trackChanged 시 requestedFor 리셋(A→광고→A 재요청) + content 인라인 동기화 + 광고 테스트 2종. **57 Green**. seek/loop 는 sync 로 이미 커버(seek 재요청無·loop seq 불변).
 - 2026-06-03: **7단계 캐시 LRU 완료**(dlc). `src/cache.js`(touchIndex/evict 순수 LRU)+`tests/cache.test.js`(7테스트) → background.js 가 `__yltt_cache_index__` 인덱스로 캐시 키만 추적(설정 키 분리), 항목 200 초과 시 오래된 것 제거. **64 테스트 Green**. 한계: 인덱스 도입 전 기존 캐시는 재접근 전까지 추적 밖(자가치유). **7단계 코드 완결**(광고+seek/loop+LRU).
+- 2026-06-03: **MVP 마무리** — stale+광고+LRU 를 main 머지(PR #1, 머지 커밋 `ab0c7b4`), feat/mvp 삭제(로컬+원격). **일본어 싱크 버그·트랙전환 수동 게이트는 사용자 스킵으로 보류 종료**(재현 데이터 확보 시 별도 작업). 브라우저 실측 미수행(자동 64테스트만 통과). `status: done`. (plan-sync 브랜치→PR 로 done 반영 — main 직접 push 차단 우회.)
 
-# Next  (단계별 검증 게이트 사슬 — 3-world 통신·player API 는 자동테스트 불가라 수동 게이트가 핵심)
-- **[버그·보류·입력 대기] 일본어 곡 싱크 어긋남** (사용자 보류 2026-06-03 — 데이터 오면 재개): 재현 곡명/콘솔 로그(`[yltt] ▶ track:` 의 author·title·durationSec + `[yltt] ✓ lyrics:` 의 줄수) 확보 → LRCLIB `/api/get` 직접 조회로 (a)받은 가사 기준 길이 vs YTM durationSec (b)`[offset:]` 태그 유무 (c)동명 이버전 수 대조 → 가설 ①offset무시/②틀린버전/③duration누락 중 확정 → 수정 + 재현 테스트(lrc.test.js 또는 lrclib.test.js). 양상 '곡마다 제각각'·표본 1~2곡이라 데이터 확보가 선행 조건.
+# Next
+- **MVP 완료** (7단계 main 머지, PR #1 `ab0c7b4`). 이 plan 은 `done`. 아래는 **향후 선택 작업** — 재개 시 각각 새 작업 단위/브랜치 + dlc:
+  - 일본어 싱크 버그(사용자 스킵): 재현 곡명/콘솔 로그(`[yltt] ▶ track:` author·title·durationSec + `✓ lyrics:` 줄수) 확보 → LRCLIB `/api/get` 조회로 (a)길이 vs durationSec (b)`[offset:]` (c)동명 이버전 대조 → 가설 ①offset무시/②틀린버전/③duration누락 확정 → 수정+재현테스트.
+  - 브라우저 실측(수동 게이트): 트랙 전환 stale·광고 clear·LRU 동작 육안 확인.
+  - 플랫폼 확장(Decisions '플랫폼 확장 검토'): OS 범용 오버레이(GSMTC position 갱신주기 로컬 측정 선행)·userscript·th-ch electron 플러그인.
 1. ✅ package.json + lrc.js 파서 TDD (14 테스트)
 2. ✅ 2-world 골격 (G1 통과, faf907c)
 3. ✅ LRCLIB fetch(SW) + 실패 4분기 + 파서 연동 (lrclib.js 13 테스트; 메타 타이밍 버그 해결; 실측 41줄 ✓)
@@ -69,8 +73,8 @@ updated: 2026-06-03
 - `package.json` — scripts.test = `node --test`
 
 # Blockers
-(status 는 in_progress — 아래는 구현 시 해결할 설계/확인 항목)
-- **[진단 입력 대기]** 일본어 싱크 버그: 재현 곡의 실제 데이터(콘솔 `[yltt]` 로그 author/title/durationSec/줄수, 또는 곡명) 필요. 받으면 LRCLIB 조회로 가설 3개 중 확정 가능 — 입력만 오면 즉시 진행(작업 자체가 막힌 건 아님, status 유지).
+(status: done — MVP 머지 완료, 막힌 것 없음. 아래는 향후 재개 시 참고)
+- **일본어 싱크 버그(사용자 스킵)**: 재현 곡의 실제 데이터(콘솔 `[yltt]` 로그 author/title/durationSec/줄수, 또는 곡명) 확보 시 LRCLIB 조회로 가설 3개 중 확정 가능. 재개하면 새 작업 단위.
 - ③ (재작성) 번역 매핑: 줄 수 검증 → **id 기반 매핑 + 부분 복구**(위 Decisions 반영). 구현 핵심 리스크.
 - ④ (신규) stale 응답 race → requestId echo 검증 + 상태 머신(위 반영). 구현 핵심.
 - ⑤ (신규) 광고 재생 videoId/player 상태 구간 처리.
