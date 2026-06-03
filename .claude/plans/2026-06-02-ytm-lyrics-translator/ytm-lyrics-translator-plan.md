@@ -26,12 +26,14 @@ updated: 2026-06-03
 - 2026-06-03: 플랫폼 대안 researcher 조사(userscript/th-ch electron/Win GSMTC/OSS). 결론은 Decisions '플랫폼 확장 검토'. + **7단계 광고 구간 처리 완료**(dlc): main-world 가 video_id 소실 구간(광고/로딩, code-review m2)을 null 이벤트로 통지→clear; sync trackChanged 시 requestedFor 리셋(A→광고→A 재요청) + content 인라인 동기화 + 광고 테스트 2종. **57 Green**. seek/loop 는 sync 로 이미 커버(seek 재요청無·loop seq 불변).
 - 2026-06-03: **7단계 캐시 LRU 완료**(dlc). `src/cache.js`(touchIndex/evict 순수 LRU)+`tests/cache.test.js`(7테스트) → background.js 가 `__yltt_cache_index__` 인덱스로 캐시 키만 추적(설정 키 분리), 항목 200 초과 시 오래된 것 제거. **64 테스트 Green**. 한계: 인덱스 도입 전 기존 캐시는 재접근 전까지 추적 밖(자가치유). **7단계 코드 완결**(광고+seek/loop+LRU).
 - 2026-06-03: **MVP 마무리** — stale+광고+LRU 를 main 머지(PR #1, 머지 커밋 `ab0c7b4`), feat/mvp 삭제(로컬+원격). **일본어 싱크 버그·트랙전환 수동 게이트는 사용자 스킵으로 보류 종료**(재현 데이터 확보 시 별도 작업). 브라우저 실측 미수행(자동 64테스트만 통과). `status: done`. (plan-sync 브랜치→PR 로 done 반영 — main 직접 push 차단 우회.)
+- 2026-06-03: 향후 작업 백로그를 **GitHub Issues 로 이관** — #3 README 작성, #4 플랫폼 확장(chrome-ext 이외 이식; 순수 코어 플랫폼 독립 / chrome 글루 교체 대상 분석 포함). 임시 `TODO.md`(docs/todo 브랜치)는 중복 방지로 폐기. **백로그 SoT = GitHub Issues** (일본어 버그·브라우저 실측은 미이관 — 필요 시 이슈화).
 
 # Next
-- **MVP 완료** (7단계 main 머지, PR #1 `ab0c7b4`). 이 plan 은 `done`. 아래는 **향후 선택 작업** — 재개 시 각각 새 작업 단위/브랜치 + dlc:
-  - 일본어 싱크 버그(사용자 스킵): 재현 곡명/콘솔 로그(`[yltt] ▶ track:` author·title·durationSec + `✓ lyrics:` 줄수) 확보 → LRCLIB `/api/get` 조회로 (a)길이 vs durationSec (b)`[offset:]` (c)동명 이버전 대조 → 가설 ①offset무시/②틀린버전/③duration누락 확정 → 수정+재현테스트.
-  - 브라우저 실측(수동 게이트): 트랙 전환 stale·광고 clear·LRU 동작 육안 확인.
-  - 플랫폼 확장(Decisions '플랫폼 확장 검토'): OS 범용 오버레이(GSMTC position 갱신주기 로컬 측정 선행)·userscript·th-ch electron 플러그인.
+- **MVP 완료** (7단계 main 머지, PR #1 `ab0c7b4`). 이 plan 은 `done`. **향후 작업 백로그는 GitHub Issues 가 SoT** (2026-06-03 이관). 재개 시 각각 새 작업 단위/브랜치 + dlc:
+  - **#3 README 작성**(신규): 설치·Gemini 키 설정·동작·범위/한계.
+  - **#4 플랫폼 확장**(Decisions '플랫폼 확장 검토'): OS 범용 오버레이(GSMTC position 갱신주기 로컬 측정 선행)·userscript·th-ch electron 플러그인.
+  - 일본어 싱크 버그(사용자 스킵, 미이관): 재현 곡명/콘솔 로그(`[yltt] ▶ track:` author·title·durationSec + `✓ lyrics:` 줄수) 확보 → LRCLIB `/api/get` 조회로 (a)길이 vs durationSec (b)`[offset:]` (c)동명 이버전 대조 → 가설 ①offset무시/②틀린버전/③duration누락 확정 → 수정+재현테스트.
+  - 브라우저 실측(수동 게이트, 미이관): 트랙 전환 stale·광고 clear·LRU 동작 육안 확인.
 1. ✅ package.json + lrc.js 파서 TDD (14 테스트)
 2. ✅ 2-world 골격 (G1 통과, faf907c)
 3. ✅ LRCLIB fetch(SW) + 실패 4분기 + 파서 연동 (lrclib.js 13 테스트; 메타 타이밍 버그 해결; 실측 41줄 ✓)
