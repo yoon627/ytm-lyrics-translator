@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "description": "YouTube Music synced lyrics translator (personal MV3 extension): LRCLIB lyrics + Claude API translation",
+  "description": "YouTube Music synced lyrics translator (personal MV3 extension): LRCLIB lyrics + Gemini API translation",
   "scripts": {
     "test": "node --test"
   }
